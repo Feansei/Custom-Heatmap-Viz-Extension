@@ -34,62 +34,12 @@ web/app.js                 <- all extension logic
 web/lib/tableau.extensions.1.latest.js   <- already included in this package
 ```
 
-## 2. Hosting: GitHub Pages (recommended)
-
-This project is already configured for GitHub Pages at
-**https://github.com/Feansei/Custom-Heatmap-Viz-Extension**, with the manifest's `<url>` pointing
-to `https://feansei.github.io/Custom-Heatmap-Viz-Extension/web/index.html`.
-
-**One-time setup:**
-
-1. Push this exact folder structure to the repository root (so `HeatmapImageVizV2.trex` and `web/`
-   sit directly at the repo root, not nested inside another folder):
-   ```bash
-   cd tableau-heatmap-viz-extension
-   git init
-   git remote add origin https://github.com/Feansei/Custom-Heatmap-Viz-Extension.git
-   git add .
-   git commit -m "Initial commit: Image Heatmap viz extension"
-   git branch -M main
-   git push -u origin main
-   ```
-2. On GitHub: **Settings → Pages → Source: Deploy from a branch → Branch: `main`, folder: `/ (root)`**
-   → Save.
-3. Wait a minute or two for the first deploy, then confirm
-   `https://feansei.github.io/Custom-Heatmap-Viz-Extension/web/index.html` loads in a browser
-   (you should see the extension's blank UI).
-
-After that, any future change just needs `git add . && git commit -m "..." && git push` — GitHub
-Pages redeploys automatically.
-
-**Important — hosting the web app is not the same as distributing the extension.** GitHub Pages
-only replaces the local web server; Tableau still needs the small `HeatmapImageVizV2.trex` file
-itself, added via **Access Local Extensions** on each machine that uses it (see Step 3 below).
-Anyone you want to use this needs a copy of that `.trex` file — you can share it directly, or point
-them to download it from this same repo. For **Tableau Server/Cloud**, an admin additionally needs
-to add `feansei.github.io` to the site's allowed Extensions domain list.
-
-### Alternative: run it locally instead
-
-If you'd rather not use GitHub Pages (e.g. while actively developing), you can still serve it
-locally and point the manifest back at localhost:
-
-```bash
-cd tableau-heatmap-viz-extension
-npx http-server . -p 8765
-# or: python -m http.server 8765
-```
-
-Then change `<url>` in `HeatmapImageVizV2.trex` back to `http://localhost:8765/web/index.html`,
-confirm it loads in a browser, and remember to switch it back to the GitHub Pages URL (and
-remove/re-add the extension in Tableau) once you're done.
-
-## 3. Add the extension to a worksheet
+## 2. Add the extension to a worksheet
 
 Marks card → Mark Type dropdown → **Viz Extensions → Add Extension → Access Local Extensions** →
 choose `HeatmapImageVizV2.trex`.
 
-## 4. Basic usage
+## 3. Basic usage
 
 1. **Choose Image** (or paste a URL + **Load URL**).
 2. **+ Draw Region** → click 3+ points around an area → **Finish Shape** → name it. The name is
@@ -101,7 +51,7 @@ choose `HeatmapImageVizV2.trex`.
 
 ---
 
-## 5. Feature details
+## 4. Feature details
 
 ### Region names are never linked to data matching
 
@@ -321,7 +271,7 @@ Tableau reports the sheet is in true "Viewing" mode (Presentation Mode or a publ
 
 ---
 
-## 5b. Newer features
+## 4b. Newer features
 
 ### On-canvas legend
 
