@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Image Heatmap Viz Extension</title>
+  <link rel="stylesheet" href="./style.css" />
+  <script src="./lib/tableau.extensions.1.latest.js"></script>
+</head>
+<body>
+  <div id="app">
+
+    <div id="statusBar" class="status-bar hidden"></div>
+
+    <div id="topbar" class="topbar">
+      <div class="topbar-group">
+        <label class="btn" for="fileInput">Choose Image
+          <input type="file" id="fileInput" accept="image/*" hidden />
+        </label>
+        <span class="sep">or</span>
+        <input type="text" id="imageUrlInput" placeholder="Paste an image URL…" />
+        <button id="loadUrlBtn" class="btn">Load URL</button>
+        <button id="clearImageBtn" class="btn btn-subtle">Clear Image</button>
+      </div>
+
+      <div class="topbar-group">
+        <button id="addRegionBtn" class="btn btn-primary" disabled>+ Draw Region</button>
+        <button id="finishRegionBtn" class="btn btn-primary hidden">Finish Shape</button>
+        <button id="cancelRegionBtn" class="btn btn-subtle hidden">Cancel</button>
+      </div>
+
+      <div class="topbar-group">
+        <button id="settingsBtn" class="btn btn-subtle" title="Settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M12 2.5v3M12 18.5v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2.5 12h3M18.5 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>
+          Settings
+        </button>
+      </div>
+    </div>
+
+    <div id="main">
+      <div id="canvasArea">
+        <button id="lockToggleBtn" class="lock-toggle-btn" title="Hide editing controls (for dashboards)" aria-label="Toggle editing controls"></button>
+
+        <div id="zoomControl" class="zoom-control">
+          <button id="zoomOutBtn" class="icon-btn" title="Zoom out" aria-label="Zoom out">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path></svg>
+          </button>
+          <input type="range" id="zoomRange" min="0.5" max="3" step="0.1" value="1" title="Zoom" aria-label="Zoom level" />
+          <button id="zoomInBtn" class="icon-btn" title="Zoom in" aria-label="Zoom in">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+          </button>
+          <span id="zoomLabel">100%</span>
+        </div>
+
+        <div id="legendControl" class="legend-control hidden">
+          <div id="legendTitle" class="legend-title"></div>
+          <div id="legendGradient" class="legend-gradient"></div>
+          <div class="legend-labels">
+            <span id="legendMin"></span>
+            <span id="legendMax"></span>
+          </div>
+        </div>
+
+        <div id="imageWrap">
+          <div id="emptyState" class="empty-state">
+            <div>
+              <p><strong>No image loaded</strong></p>
+              <p>Choose an image above to get started, then draw regions on it.</p>
+            </div>
+          </div>
+          <img id="bgImage" alt="" draggable="false" />
+          <svg id="overlay" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        </div>
+
+        <div id="drawHint" class="draw-hint hidden">
+          Click to place points around the area you want to highlight. Add at least 3 points, then click
+          <strong>Finish Shape</strong>.
+        </div>
+
+        <div id="namePrompt" class="modal hidden">
+          <div class="modal-box">
+            <div class="modal-header">
+              <h3>Name this region</h3>
+            </div>
+            <div class="modal-body">
+              <p class="hint">This name is just a label. It has no effect on your data — open the
+                ⚙ panel afterward to choose which values from your Region ID field belong here.</p>
+              <input type="text" id="regionNameInput" placeholder="Name this region" />
+              <div class="name-prompt-actions">
+                <button id="regionNameCancel" class="btn btn-subtle">Cancel</button>
+                <button id="regionNameSave" class="btn btn-primary">Save Region</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Region group configuration: data-value grouping + aggregation + palette + filter behavior -->
+        <div id="configModal" class="modal hidden">
+          <div class="modal-box config-box">
+            <div class="modal-header">
+              <h3 id="configTitle">Configure Region</h3>
+              <button id="configCloseBtn" class="icon-btn" title="Close" aria-label="Close">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+              </button>
+            </div>
+            <div id="configBody" class="modal-body"></div>
+          </div>
+        </div>
+
+        <!-- Settings: theme + canvas background + default filter targets + credit -->
+        <!-- Copy/Paste configuration transfer -->
+        <div id="transferModal" class="modal hidden">
+          <div class="modal-box config-box">
+            <div class="modal-header">
+              <h3 id="transferTitle">Copy Configuration</h3>
+              <button id="transferCloseBtn" class="icon-btn" title="Close" aria-label="Close">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p id="transferHint" class="hint" style="margin-bottom:8px;"></p>
+              <textarea id="transferTextarea" rows="10" style="width:100%; font-family:monospace; font-size:11px; padding:8px; border:1px solid var(--input-border); background:var(--input-bg); color:var(--text); border-radius:var(--radius); resize:vertical;"></textarea>
+              <div class="name-prompt-actions" style="margin-top:10px;">
+                <button id="transferCopyBtn" class="btn btn-primary hidden">Copy to Clipboard</button>
+                <button id="transferApplyBtn" class="btn btn-primary hidden">Apply</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="settingsModal" class="modal hidden">
+          <div class="modal-box">
+            <div class="modal-header">
+              <h3>Settings</h3>
+              <button id="settingsCloseBtn" class="icon-btn" title="Close" aria-label="Close">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="settings-row">
+                <label>Theme</label>
+                <div class="theme-toggle">
+                  <button id="themeLightBtn" class="btn btn-subtle">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+                    Light
+                  </button>
+                  <button id="themeDarkBtn" class="btn btn-subtle">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"></path></svg>
+                    Dark
+                  </button>
+                </div>
+              </div>
+              <hr />
+              <div class="settings-row" style="display:block;">
+                <label>Canvas background</label>
+                <p class="hint" style="margin-bottom:8px;">The area behind the image, not the image itself.</p>
+                <div class="color-row">
+                  <label for="canvasBgColorInput" style="min-width:40px;">Color</label>
+                  <input type="color" id="canvasBgColorInput" value="#ebebeb" />
+                  <button id="canvasBgClearBtn" class="btn btn-subtle">Reset</button>
+                </div>
+                <input type="text" id="canvasBgImageInput" placeholder="Optional background image URL…" style="width:100%; margin-top:6px;" />
+              </div>
+              <hr />
+              <div class="settings-row" style="display:block;">
+                <label for="filterTargetSheetsInput">Default filter target worksheets</label>
+                <p class="hint" style="margin-bottom:8px;">Comma-separated worksheet names to filter when a region group doesn't specify its own target worksheets (in its ⚙ panel). At least one target — global or per-group — is required for a region to filter anything.</p>
+                <input type="text" id="filterTargetSheetsInput" placeholder="e.g. Detail Table, Trend Chart" style="width:100%;" />
+              </div>
+              <hr />
+              <div class="settings-row" style="display:block;">
+                <label class="checkbox-row" for="showStatusToggle" style="font-weight:600 !important; font-size:12.5px;">
+                  <input type="checkbox" id="showStatusToggle" checked />
+                  Show status notifications
+                </label>
+                <p class="hint" style="margin-top:4px;">The floating message that appears when you save, load, or filter. Turning this off also hides error messages, so only disable it once things are working as expected.</p>
+              </div>
+              <hr />
+              <div class="settings-row" style="display:block;">
+                <label class="checkbox-row" for="showLegendToggle" style="font-weight:600 !important; font-size:12.5px;">
+                  <input type="checkbox" id="showLegendToggle" checked />
+                  Show on-canvas legend
+                </label>
+                <p class="hint" style="margin-top:4px;">A floating gradient bar (bottom-right of the image) showing the color scale of whichever region you're hovering, or the active filter if none.</p>
+              </div>
+              <hr />
+              <div class="settings-row" style="display:block;">
+                <label>Backup / transfer configuration</label>
+                <p class="hint" style="margin-bottom:8px;">Copy the current image, regions, and settings as text to move them to another worksheet, or paste in a configuration copied from elsewhere.</p>
+                <div class="btn-row">
+                  <button id="copyConfigBtn" class="btn btn-subtle">Copy Config</button>
+                  <button id="pasteConfigBtn" class="btn btn-subtle">Paste Config</button>
+                </div>
+              </div>
+              <hr />
+              <p class="hint">Image Heatmap — Tableau Viz Extension</p>
+              <p class="hint">
+                <a href="https://www.linkedin.com/in/seanfei/" target="_blank" rel="noopener noreferrer">Connect on LinkedIn ↗</a>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div id="tooltip" class="tooltip hidden"></div>
+      </div>
+
+      <button id="sidebarToggle" class="sidebar-toggle" title="Toggle panel" aria-label="Toggle side panel"></button>
+
+      <div id="sidebar">
+        <div class="sidebar-section">
+          <h3>Data</h3>
+          <p id="dataHint" class="hint">
+            Drag a discrete field onto <strong>Region ID</strong> and a measure onto <strong>Value</strong>
+            on the Marks card.
+          </p>
+        </div>
+
+        <div class="sidebar-section">
+          <h3>Filtering</h3>
+          <p id="activeFilterHint" class="hint">Click a region on the image to filter with it. Click the same region again to toggle it off (behavior configurable per region in ⚙).</p>
+          <div class="btn-row">
+            <button id="clearSelectionBtn" class="btn btn-subtle">Clear Active Filter</button>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <h3>Display</h3>
+          <div class="color-row">
+            <label for="opacityRange">Opacity</label>
+            <input type="range" id="opacityRange" min="0.1" max="1" step="0.05" value="0.65" />
+          </div>
+        </div>
+
+        <div class="sidebar-section regions-section">
+          <h3>Regions <span id="regionCount" class="count"></span> <button id="showAllRegionsBtn" class="btn btn-subtle hidden" style="float:right; padding:2px 8px; font-size:11px;">Show All</button></h3>
+          <div id="regionList" class="region-list">
+            <p class="hint">No regions yet. Draw one on the image.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

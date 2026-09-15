@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest manifest-version="0.1" xmlns="http://www.tableau.com/xml/extension_manifest">
+  <worksheet-extension id="com.example.extensions.heatmapimageviz.v2" extension-version="0.1.1">
+    <default-locale>en_US</default-locale>
+    <name resource-id="name"/>
+    <description>Highlight custom regions on any image and color them by a Tableau measure, like a floor-plan or diagram heatmap.</description>
+    <author name="Your Name" email="you@example.com" organization="Your Org" website="https://www.example.com"/>
+    <min-api-version>1.9</min-api-version>
+    <source-location>
+      <url>https://feansei.github.io/Custom-Heatmap-Viz-Extension/web/index.html</url>
+    </source-location>
+    <icon/>
+
+    <encoding id="region">
+      <display-name resource-id="region-name">Region ID</display-name>
+      <data-spec>
+        <data-type>string</data-type>
+      </data-spec>
+      <role-spec>
+        <role-type>discrete-dimension</role-type>
+      </role-spec>
+      <fields max-count="1"/>
+      <encoding-icon token="text" />
+      <tooltip resource-id="region-tooltip">The field whose values match the region names you draw on the image</tooltip>
+    </encoding>
+
+    <encoding id="value">
+      <display-name resource-id="value-name">Value</display-name>
+      <data-spec>
+        <data-type>numeric</data-type>
+      </data-spec>
+      <role-spec>
+        <role-type>continuous-measure</role-type>
+        <role-type>discrete-measure</role-type>
+      </role-spec>
+      <fields max-count="1"/>
+      <encoding-icon token="color" />
+      <tooltip resource-id="value-tooltip">The measure used to color each highlighted region</tooltip>
+    </encoding>
+
+    <encoding id="rowcount">
+      <display-name resource-id="rowcount-name">Row Count (optional)</display-name>
+      <data-spec>
+        <data-type>numeric</data-type>
+      </data-spec>
+      <role-spec>
+        <role-type>continuous-measure</role-type>
+        <role-type>discrete-measure</role-type>
+      </role-spec>
+      <fields max-count="1"/>
+      <encoding-icon token="hash" />
+    </encoding>
+  </worksheet-extension>
+
+  <resources>
+    <resource id="name">
+      <text locale="en_US">Image Heatmap</text>
+    </resource>
+    <resource id="region-name">
+      <text locale="en_US">Region ID</text>
+    </resource>
+    <resource id="region-tooltip">
+      <text locale="en_US">The field whose values match the region names you draw on the image</text>
+    </resource>
+    <resource id="value-name">
+      <text locale="en_US">Value</text>
+    </resource>
+    <resource id="value-tooltip">
+      <text locale="en_US">The measure used to color each highlighted region</text>
+    </resource>
+    <resource id="rowcount-name">
+      <text locale="en_US">Row Count (optional)</text>
+    </resource>
+  </resources>
+</manifest>
