@@ -173,6 +173,16 @@
     els.loadUrlBtn.addEventListener('click', onLoadUrl);
     els.clearImageBtn.addEventListener('click', onClearImage);
 
+    // Keeps the SVG overlay's pixel size locked to the actual rendered image at all times,
+    // regardless of what triggered the resize (image load, lock toggle, zoom, window resize,
+    // Tableau's own dashboard layout) — see syncOverlaySize().
+    els.bgImage.addEventListener('load', syncOverlaySize);
+    if (window.ResizeObserver) {
+      new ResizeObserver(syncOverlaySize).observe(els.bgImage);
+    } else {
+      window.addEventListener('resize', syncOverlaySize);
+    }
+
     els.addRegionBtn.addEventListener('click', () => startDrawing(null));
     els.finishRegionBtn.addEventListener('click', finishDrawing);
     els.cancelRegionBtn.addEventListener('click', cancelDrawing);
@@ -568,6 +578,22 @@
       els.emptyState.classList.remove('hidden');
       els.addRegionBtn.disabled = true;
     }
+    syncOverlaySize();
+  }
+
+  // Keeps #overlay's pixel size locked exactly to the rendered <img>, rather than relying on
+  // #overlay's CSS (100%/inset:0 of #imageWrap, which itself sizes to the image) staying in sync
+  // implicitly — locking/unlocking changes several sizing rules at once (image max-width/height,
+  // canvas padding, scrollbar presence), and this removes any dependency on that chain lining up
+  // correctly, which is what was letting drawn regions drift out of alignment with the image.
+  function syncOverlaySize() {
+    if (!state.imageSrc || !els.bgImage.clientWidth || !els.bgImage.clientHeight) {
+      els.overlay.style.width = '';
+      els.overlay.style.height = '';
+      return;
+    }
+    els.overlay.style.width = els.bgImage.clientWidth + 'px';
+    els.overlay.style.height = els.bgImage.clientHeight + 'px';
   }
 
   // ---------- Drawing shapes ----------
@@ -1487,7 +1513,20 @@
       els.dataHint.classList.add('hidden');
 
       const reader = await state.worksheet.getSummaryDataReaderAsync(undefined, { ignoreSelection: true });
-      const dataTable = await reader.getAllPagesAsync();
+      // getAllPagesAsync() can throw ("invalid-parameter: 0 is invalid value for range: [0..0)")
+      // when the sheet momentarily has zero summary rows — e.g. right as it's dropped onto a
+      // dashboard, before layout/filters settle. Treat that as "no data yet" rather than an error.
+      let dataTable;
+      if (reader.pageCount > 0) {
+        try {
+          dataTable = await reader.getAllPagesAsync();
+        } catch (pageErr) {
+          console.warn('getAllPagesAsync failed on a non-empty reader, treating as no data:', pageErr);
+          dataTable = { columns: reader.columns, data: [], totalRowCount: 0 };
+        }
+      } else {
+        dataTable = { columns: reader.columns, data: [], totalRowCount: 0 };
+      }
       await reader.releaseAsync();
 
       const regionColIdx = dataTable.columns.findIndex(c => c.fieldName === mapping.region);
