@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest manifest-version="0.1" xmlns="http://www.tableau.com/xml/extension_manifest">
-  <worksheet-extension id="com.example.extensions.heatmapimageviz.v2" extension-version="0.1.1">
+  <worksheet-extension id="com.example.extensions.heatmapimageviz.v2" extension-version="1.1.0">
     <default-locale>en_US</default-locale>
     <name resource-id="name"/>
     <description>Highlight custom regions on any image and color them by a Tableau measure, like a floor-plan or diagram heatmap.</description>
-    <author name="Your Name" email="you@example.com" organization="Your Org" website="https://www.example.com"/>
-    <min-api-version>1.9</min-api-version>
+    <author name="Sean Fei" email="sean.fei@theinformationlab.com" organization="The Information Lab US" website="https://www.linkedin.com/in/seanfei/"/>
+    <min-api-version>1.12</min-api-version>
     <source-location>
       <url>https://feansei.github.io/Custom-Heatmap-Viz-Extension/web/index.html</url>
     </source-location>
-    <icon/>
+    <icon>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</icon>
 
     <encoding id="region">
       <display-name resource-id="region-name">Region ID</display-name>
@@ -21,7 +21,7 @@
       </role-spec>
       <fields max-count="1"/>
       <encoding-icon token="text" />
-      <tooltip resource-id="region-tooltip">The field whose values match the region names you draw on the image</tooltip>
+      <tooltip resource-id="region-tooltip">The field whose values you assign to each region you draw on the image</tooltip>
     </encoding>
 
     <encoding id="value">
@@ -49,6 +49,7 @@
       </role-spec>
       <fields max-count="1"/>
       <encoding-icon token="hash" />
+      <tooltip resource-id="rowcount-tooltip">Optional COUNT() or Number of Records measure, used only by the COUNT aggregation</tooltip>
     </encoding>
   </worksheet-extension>
 
@@ -60,7 +61,7 @@
       <text locale="en_US">Region ID</text>
     </resource>
     <resource id="region-tooltip">
-      <text locale="en_US">The field whose values match the region names you draw on the image</text>
+      <text locale="en_US">The field whose values you assign to each region you draw on the image</text>
     </resource>
     <resource id="value-name">
       <text locale="en_US">Value</text>
@@ -70,6 +71,9 @@
     </resource>
     <resource id="rowcount-name">
       <text locale="en_US">Row Count (optional)</text>
+    </resource>
+    <resource id="rowcount-tooltip">
+      <text locale="en_US">Optional COUNT() or Number of Records measure, used only by the COUNT aggregation</text>
     </resource>
   </resources>
 </manifest>

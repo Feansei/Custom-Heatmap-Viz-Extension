@@ -1,388 +1,414 @@
 # Image Heatmap — Tableau Viz Extension
 
-A Tableau **Viz Extension** (Tableau 2024.2+) that turns any image — a floor plan, body diagram,
-map, or similar — into an interactive heatmap. Draw regions on top of the image, bind them to data
-on the Marks card, and each region colors itself and can filter the rest of your dashboard when
-clicked.
+Turn any image — a floor plan, body diagram, store layout, map, or product photo — into an
+interactive heatmap. You draw regions on top of the image, link each region to values in your
+data, and every region colors itself by your measure. Clicking a region can filter other sheets on
+your dashboard and/or change a parameter.
 
 ---
 
-## 1. Setup
+## Requirements
 
-### Files
-
-```
-HeatmapImageVizV2.trex     <- the extension manifest Tableau loads
-web/index.html
-web/style.css
-web/app.js
-web/lib/tableau.extensions.1.latest.js
-```
-
-## 2. Hosting: GitHub Pages (recommended)
-
-This project is already configured for GitHub Pages at
-**https://github.com/Feansei/Custom-Heatmap-Viz-Extension**, with the manifest's `<url>` pointing
-to `https://feansei.github.io/Custom-Heatmap-Viz-Extension/web/index.html`.
-
-**One-time setup:**
-
-1. Push this exact folder structure to the repository root (so `HeatmapImageVizV2.trex` and `web/`
-   sit directly at the repo root, not nested inside another folder):
-   ```bash
-   cd tableau-heatmap-viz-extension
-   git init
-   git remote add origin https://github.com/Feansei/Custom-Heatmap-Viz-Extension.git
-   git add .
-   git commit -m "Initial commit: Image Heatmap viz extension"
-   git branch -M main
-   git push -u origin main
-   ```
-2. On GitHub: **Settings → Pages → Source: Deploy from a branch → Branch: `main`, folder: `/ (root)`**
-   → Save.
-3. Wait a minute or two for the first deploy, then confirm
-   `https://feansei.github.io/Custom-Heatmap-Viz-Extension/web/index.html` loads in a browser
-   (you should see the extension's blank UI).
-
-After that, any future change just needs `git add . && git commit -m "..." && git push` — GitHub
-Pages redeploys automatically.
-
-**Important — hosting the web app is not the same as distributing the extension.** GitHub Pages
-only replaces the local web server; Tableau still needs the small `HeatmapImageVizV2.trex` file
-itself, added via **Access Local Extensions** on each machine that uses it (see Step 3 below).
-Anyone you want to use this needs a copy of that `.trex` file — you can share it directly, or point
-them to download it from this same repo. For **Tableau Server/Cloud**, an admin additionally needs
-to add `feansei.github.io` to the site's allowed Extensions domain list.
-
-### Alternative: run it locally instead
-
-If you'd rather not use GitHub Pages (e.g. while actively developing), you can still serve it
-locally and point the manifest back at localhost:
-
-```bash
-cd tableau-heatmap-viz-extension
-npx http-server . -p 8765
-# or: python -m http.server 8765
-```
-
-Then change `<url>` in `HeatmapImageVizV2.trex` back to `http://localhost:8765/web/index.html`,
-confirm it loads in a browser, and remember to switch it back to the GitHub Pages URL (and
-remove/re-add the extension in Tableau) once you're done.
-
-## 3. Add the extension to a worksheet
-
-Marks card → Mark Type dropdown → **Viz Extensions → Add Extension → Access Local Extensions** →
-select `HeatmapImageVizV2.trex`.
-
-## 4. Basic usage
-
-1. **Choose Image** (or paste a URL + **Load URL**).
-2. **+ Draw Region** → click 3+ points around an area → **Finish Shape** → name it. The name is
-   just a label — it does not affect your data (see below).
-3. Drag a **dimension** onto **Region ID** and a **measure** onto **Value** on the Marks card.
-4. Open the ⚙ icon on the region to add matched data values (see below) — a freshly drawn region
-   has none by default, so it won't show a color until you do this.
-5. Use the pencil icon to redraw a shape, the trash icon to delete, or click the name to rename it.
+- **Tableau Desktop, Server, or Cloud 2024.2 or later** (Viz Extensions support is required).
+- The extension manifest file: **`HeatmapImageVizV2.trex`**.
+- **Tableau Server / Cloud only:** your site admin must allow this extension on the site's
+  Extensions settings before it will load in published workbooks.
 
 ---
 
-## 5. Feature details
+## Quick start
 
-### Region names are never linked to data matching
+1. Add the extension as the **Mark Type** on a worksheet.
+2. Drag a **dimension** onto **Region ID** and a **measure** onto **Value**.
+3. Load an image.
+4. Click **+ Draw Region**, draw a shape, and name it.
+5. Click the **⚙** icon on the region and pick the data value(s) that belong to it.
+6. Choose the **target worksheets** to filter (and optionally a parameter), then click the region.
 
-A region's display **name** and its **matched values** (added in the ⚙ panel) are fully separate,
-from the moment you create the region. Naming a region no longer pre-fills a matched value, and
-renaming a region — even repeatedly — will never change what it's matched to. If a region isn't
-showing color, check the ⚙ panel's "Data values in this region" list, not the name.
-
-> **Manifest note:** each `<encoding>` in the `.trex` must have a unique `<encoding-icon token="...">`
-> — reusing a token across encodings causes Tableau to reject the add with *"Cannot use the same
-> icon for more than one encoding"* (error code `ED626076`). Region ID uses `text`, Value uses
-> `color`, and Row Count uses `hash`.
-
-### Grouping multiple data values into one region, with aggregation (⚙ icon)
-
-Click the ⚙ icon next to a region to open **Configure Region**. Under **Data values in this
-region**, add every value from your Region ID field that should belong to this shape (e.g. for a
-"Triceps" region: `Bench Press`, `Tricep Pushdown`, `Dips`). Then choose how those values combine
-into the region's single value via the **Aggregation** dropdown:
-
-| Aggregation | Behavior |
-|---|---|
-| SUM | Total of all matched values |
-| AVG | Average of all matched values (default) |
-| MIN | Smallest matched value |
-| MAX | Largest matched value |
-| COUNT | Number of matched values |
-| COUNTD | Number of *distinct* matched values |
-| MEDIAN | Median of all matched values |
-
-The sidebar, the fill color, and the tooltip all read from this exact same computed value, so
-they can never disagree with each other.
-
-### Per-region diverging color scale
-
-In the same ⚙ panel, under **Diverging color steps**, each region has its own list of
-value → color breakpoints (2–9 steps). Colors blend smoothly between adjacent steps. Edit a step's
-value or color directly, add/remove steps, or click **Auto-space to data range** to spread the
-current steps evenly across the min/max of whatever data is currently in view. This is per-region,
-so two regions can use completely different scales.
-
-### Tooltips are user-editable
-
-Hovering a region shows a tooltip computed the same way as the sidebar and fill color — guaranteed
-to always agree with what you see. Earlier versions used Tableau's native per-mark tooltip
-(`hoverTupleAsync`), which also enabled Viz-in-Tooltip; that was **removed** because a region
-grouping several data values doesn't correspond to any single underlying mark, which was producing
-tooltips that didn't match the region's actual computed value.
-
-Open a region's ⚙ panel and edit the **Tooltip text** box directly. Use these placeholders — they
-are substituted with live values on every hover:
-
-| Placeholder | Meaning |
-|---|---|
-| `{name}` | The region's display name |
-| `{agg}` | The chosen aggregation (SUM, AVG, etc.) |
-| `{value}` | The computed aggregated value |
-| `{matched}` | How many of the region's values had data |
-| `{total}` | Total number of values assigned to the region |
-
-The first line becomes the tooltip title; further lines (real newlines in the box) show as detail
-text below it. **Reset to default** restores `{name}` / `{agg}: {value} ({matched}/{total} matched)`.
-Only the wording is customizable — the underlying number always matches the sidebar and fill color.
-
-### COUNT and real row counts (optional "Row Count" encoding)
-
-By default, **COUNT** returns how many of a region's matched values currently have data (the same
-number as the "x/y matched" figure) — because a Viz Extension only ever receives Tableau's
-*already-aggregated* summary table, not raw rows, so there's no row count to see unless you give it
-one explicitly.
-
-Once you add this extension, the Marks card shows **three separate, independent tiles**:
-
-```
-Marks card
-├── Region ID                ← your dimension
-├── Value                     ← your measure
-└── Row Count (optional)      ← a COUNT() / Number of Records measure
-```
-
-They are siblings — dropping a field on Row Count does not modify or replace Value, and there is no
-Color/Size/Label shelf to confuse it with (this isn't a standard chart type). To make COUNT reflect
-real underlying rows (e.g. "50 individual workout log entries" rather than "1 matched value"), drag
-a `COUNT()` or "Number of Records" field onto the **Row Count** tile specifically — not onto Value.
-Once present, COUNT sums those real row counts across a region's matched values. This tile is
-entirely optional and only ever affects the COUNT aggregation; everything else works identically
-whether or not it's populated.
-
-### Regions are made of groups + shapes — multiple shapes can share one region
-
-A **region** (what you see in the sidebar) is really a data/config unit — matched values,
-aggregation, palette, tooltip, and filter behavior — separate from the **shape(s)** drawn on the
-image. Most regions have exactly one shape, but a region can have several: click
-**+ Add Shape to This Region** on any region's sidebar card, draw another polygon, and it's added
-as a second (third, etc.) shape under the *same* region. All of a region's shapes share the same
-matched values, color, and filter target — so two disconnected areas of the image (e.g. both
-biceps in a body diagram) can be configured once and behave identically no matter which one is
-clicked. Each shape still has its own **redraw** (pencil), **delete** (trash), and
-**smooth corners** toggle in the sidebar, since geometry is the one thing that's genuinely
-per-shape rather than shared.
-
-### Click a region to filter — click it again to toggle off
-
-There's no separate "Apply Filter" button anymore. Click a region (its shape on the image, or its
-row in the sidebar) and it immediately filters using its matched values. Click the **same** region
-again, and what happens depends on that region's **"On 2nd click"** setting in its ⚙ panel:
-
-| Option | Effect on the second click |
-|---|---|
-| **Fully unapply the filter** (default) | Filter is cleared entirely — back to showing everything |
-| **Keep the current filter** | Nothing changes — the filter stays exactly as applied |
-| **Select all values in the field** | Filter is set to include every value in the field (`FilterUpdateType.All`), which shows everything but via an explicit "all selected" filter state rather than no filter at all — useful if a downstream sheet or action distinguishes between the two |
-
-Clicking a *different* region while one is already active replaces the current filter with the new
-region's, the same way clicking a different bar in a bar chart would. A dashed outline on the image
-(and a highlighted card in the sidebar) always shows which region is currently active.
-
-This is a **direct categorical filter on your Region ID field**, not mark selection — it calls
-`Worksheet.applyFilterAsync(...)` with the exact, canonical text values behind the clicked region's
-matched data (not what you typed in ⚙, so casing/typos there can't cause a mismatch). An earlier
-version used mark selection (`selectTuplesAsync`) plus a manually-configured Filter Action; that
-depended on the same tuple-id ordering mechanism responsible for an earlier tooltip bug and was
-never fully verified reliable, so it's been replaced with something more transparent.
-
-### Target worksheets — global default, with per-region overrides
-
-**To reach other sheets on the dashboard, no Filter Action is needed at all.** Each region has its
-own **Target sheets** field in ⚙ (comma-separated worksheet names) — so not every region has to
-filter the same sheets. Leave a region's target sheets blank and it falls back to the
-**Default filter target worksheets** list in ⚙ Settings. At least one target — global or
-per-region — is required; clicking a region with nowhere to send the filter shows a clear status
-message rather than doing nothing silently.
-
-Whichever list applies, `applyFilterAsync` has no choice but to filter *this* worksheet first (a
-Viz Extension can't create a filter that skips its own sheet) — but this worksheet is also where
-the extension reads its own data from. Filtering it would silently break every *other* region
-(they'd suddenly show "no matching data" because their rows had just been filtered out from under
-the extension itself). So immediately after applying, the extension calls
-`Filter.setAppliedWorksheetsAsync(...)` to retarget the filter to *only* the intended sheets,
-explicitly excluding this one — restoring this sheet to the full, unfiltered field so every region
-keeps working regardless of what was last filtered. **Clear Active Filter** in the sidebar releases
-the filter from wherever it's currently applied, as a manual override regardless of the active
-region's own toggle setting.
-
-The status bar reports exactly what happened — which region, which sheets — so you can always tell
-whether it actually worked rather than guessing.
-
-### Settings panel
-
-⚙ **Settings** in the top bar has Light/Dark theme controls, canvas background options, the
-**default filter target worksheets** list described above, a **Show status notifications** toggle
-(see below), and a credit link to
-[linkedin.com/in/seanfei](https://www.linkedin.com/in/seanfei/).
-
-### Status notifications are a floating toast, and can be turned off
-
-Save/load/filter messages ("Saved to workbook", "\"Triceps\" filtering: Detail Table.", errors,
-etc.) now appear as a small floating notification near the top of the canvas
-(`position: fixed`) instead of a bar that pushed the toolbar and drawn regions down every time it
-appeared or disappeared — nothing in the layout shifts when it shows up. Turn it off entirely via
-**Show status notifications** in ⚙ Settings; note that this also hides error messages, so it's
-best left on until things are working the way you expect.
-
-### Show/hide individual regions
-
-Each region has an eye icon in its sidebar row (leftmost of the three action icons) — click it to
-hide that region's shape(s) on the image entirely. A hidden region isn't just faded out, it's
-skipped from rendering altogether, so it also stops intercepting clicks, which is the main reason
-to use this: when drawing several shapes close together or overlapping, hide the ones you're not
-currently working with so clicks land on the shape you actually want. Hidden regions still work
-normally everywhere else (sidebar row, ⚙ config, data matching) — only their on-image presence is
-suppressed. A **Show All** link appears next to the Regions header whenever at least one region is
-hidden, as a quick way to bring everything back.
-
-### Collapsing the side panel
-
-A thin `‹`/`›` tab sits between the image and the sidebar — click it to hide or show just the side
-panel while keeping the toolbar and image visible. Independent of the lock button; saved with the
-workbook.
-
-### Zooming the image
-
-The floating zoom control in the bottom-left of the canvas scales **only the image and its
-regions** via a CSS transform — the toolbar and sidebar stay fixed size. While drawing, the vertex
-dots and connector line automatically scale inversely with zoom so they stay a small, constant,
-precise on-screen size at any zoom level rather than ballooning up when you zoom in to mark fine
-detail. The zoom control itself is hidden whenever the editing chrome is locked.
-
-The browser's own zoom gesture (Ctrl+scroll-wheel, or a trackpad pinch) is now blocked inside the
-extension, so it can't resize the whole extension or throw off the image's layout — only the
-extension's own zoom slider changes anything. This is a JavaScript-level fix
-(`preventDefault()` on ctrl-modified wheel/gesture events); it only affects interaction inside the
-extension's own iframe, not the rest of the Tableau window.
-
-### Canvas background
-
-Settings → **Canvas background** lets you set a color and/or an optional background image for the
-area *behind* the image (not the image itself) — useful for matching a dashboard's background or
-just for aesthetics. Leave the image URL blank to use just the color; click **Reset** to go back to
-the theme's default gray. Both are saved with the workbook.
-
-### Smoothing region outlines
-
-Open a region's ⚙ panel and check **Smooth corners** under **Shape** to render that region's
-outline as a rounded curve through its vertices instead of straight polygon edges — useful for
-regions that are meant to be roughly circular/organic rather than angular. This only changes how
-the shape is *drawn*; the underlying vertex points you clicked are unchanged, so editing and
-redrawing still work the same way. It's a per-region, opt-in toggle (off by default) so existing
-regions render exactly as before unless you turn it on.
-
-### Hiding the editing controls on a dashboard
-
-The lock button in the top-right of the canvas hides the toolbar, sidebar, side-panel toggle, and
-zoom control, leaving only the image and its colored regions — for when you're placing this on a
-dashboard for others to view. This state is saved with the workbook, and is also auto-applied when
-Tableau reports the sheet is in true "Viewing" mode (Presentation Mode or a published dashboard).
+Each step is explained in detail below.
 
 ---
 
-## 5b. Newer features
+## 1. Add the extension to a worksheet
+
+1. Open (or create) a worksheet.
+2. On the **Marks** card, open the **Mark Type** dropdown.
+3. Choose **Viz Extensions → Add Extension → Access Local Extensions**.
+4. Select **`HeatmapImageVizV2.trex`**.
+
+The mark type now shows **Image Heatmap**, and the extension's editor appears in the view.
+
+---
+
+## 2. Connect your data
+
+The Marks card shows three tiles for this extension:
+
+| Tile | What to drop on it | Required? |
+|---|---|---|
+| **Region ID** | A discrete dimension whose values identify each area (e.g. `Room`, `Muscle Group`, `Aisle`) | Yes |
+| **Value** | The measure used to color each region (e.g. `SUM(Sales)`, `AVG(Temperature)`) | Yes |
+| **Row Count (optional)** | A count measure such as `COUNT(...)` or `Number of Records` | No — only used by the **COUNT** aggregation |
+
+Until both Region ID and Value are filled, the **Data** section of the side panel tells you what's
+missing. Once they are, it shows how many Region ID values are in the data and how many aren't
+assigned to a region yet.
+
+> Regular filters on the Filters shelf work normally — the extension only sees the data that's left
+> after they're applied.
+
+---
+
+## 3. Load an image
+
+Use the top toolbar:
+
+- **Choose Image** — upload a file from your computer. The image is saved inside the workbook.
+- **Paste an image URL… → Load URL** (or press **Enter**) — use an image hosted online. Only the
+  link is saved, which keeps the workbook small. The URL must be reachable by everyone who views
+  the workbook.
+- **Clear Image** — removes the image. Your regions are kept and reappear when you load a new
+  image.
+
+> **Tip:** Workbook settings have a size limit. For large or high-resolution images, use
+> **Load URL**, or shrink the file before uploading. If a save fails, you'll see a message
+> saying so.
+
+---
+
+## 4. Draw regions
+
+Click **+ Draw Region**, then pick a drawing tool in the toolbar:
+
+| Tool | How to draw |
+|---|---|
+| **Polygon** | Click to place points (at least 3). Finish by clicking the **first point**, pressing **Enter**, or clicking **Finish Shape**. |
+| **Rectangle** | Click and drag on the image. |
+| **Ellipse** | Click and drag on the image. |
+
+While drawing a polygon:
+
+- **Backspace**, **Ctrl/Cmd+Z**, right-click, or **Undo Point** removes the last point.
+- A dashed line follows your cursor, and the first point grows when you're close enough to close
+  the shape.
+
+Press **Esc** or click **Cancel** at any time to discard the shape. When the shape is finished,
+enter a name and click **Save Region** (or press **Enter**).
+
+**The region name is only a label.** It does not connect the region to your data — you do that in
+the next step. You can rename a region at any time by clicking its name in the side panel.
+
+### Zoom for precise drawing
+
+Use the zoom control in the **bottom-left** of the canvas (50%–300%). Points stay a small,
+constant size at any zoom level.
+
+### One region, several shapes
+
+A region can be made of more than one shape — for example, both left and right biceps on a body
+diagram, or two separate areas of a warehouse that share one data value.
+
+1. In the side panel, find the region.
+2. Click **+ Add Shape to This Region**.
+3. Draw the new shape (no name prompt — it joins the existing region).
+
+All shapes in a region share the same data values, color, label, tooltip, and click actions.
+
+### Edit individual shapes
+
+Each shape is listed under its region in the side panel as **Shape 1**, **Shape 2**, etc.:
+
+| Icon | Action |
+|---|---|
+| Curve | **Smooth corners** — draws the outline as a rounded curve instead of straight edges |
+| Points | **Edit points** — adjust the existing outline (see below) |
+| Pencil | **Redraw** — draw this shape again from scratch, with any tool |
+| Trash | **Delete** this shape (deleting a region's last shape deletes the region, after a confirmation) |
+
+In **Edit points** mode:
+
+- **Drag a point** to move it.
+- **Drag the shape** to move the whole shape.
+- **Double-click the shape** to add a point on the nearest edge.
+- **Alt+click** or **double-click a point** to remove it (a shape keeps at least 3 points).
+
+Click **Done Editing** in the toolbar (or press **Esc**) when you're finished.
+
+---
+
+## 5. Assign data values to a region
+
+A new region has no data attached, so it's drawn with the "no data" style (a gray hatched pattern
+by default). To connect it:
+
+1. Click the **⚙** icon on the region in the side panel.
+2. Click in the box under **Data values in this region**. A list of the values in your Region ID
+   field appears, with each value's measure next to it.
+3. Type to search, then click a value (or use the arrow keys and **Enter**). The list stays open so
+   you can add several values in a row.
+4. Remove a value by clicking the **×** on its chip.
+
+Values already used by another region are tagged with that region's name. You can also type a value
+that isn't in the current data and press **Enter** — it's shown with a dashed red outline until
+that value appears in the data (for example, after a filter changes).
+
+### Combine multiple values with an aggregation
+
+When a region contains more than one data value, choose how they combine using the
+**Aggregation** dropdown:
+
+| Aggregation | Result |
+|---|---|
+| **SUM** | Total of the matched values |
+| **AVG** | Average of the matched values *(default)* |
+| **MIN** | Smallest matched value |
+| **MAX** | Largest matched value |
+| **COUNT** | Number of matched values — or, if a field is on **Row Count**, the total of that field across the matched values |
+| **COUNTD** | Number of distinct measure values among the matched values |
+| **MEDIAN** | Median of the matched values |
+
+Example: a "Triceps" region with the values `Bench Press`, `Tricep Pushdown`, and `Dips`, using
+**SUM**, is colored by the combined total of all three.
+
+The side panel shows each region's result, e.g. `AVG: 42.5 (3/3 matched)`. If fewer values matched
+than you added, look for the dashed red chips in ⚙.
+
+### Format the value
+
+Use **Format → Prefix / Suffix** to add units, e.g. prefix `$` or suffix ` kWh`. The format appears
+in the side panel, labels, tooltip, and legend.
+
+---
+
+## 6. Set the colors
+
+In the region's ⚙ panel, **Colors** controls how values map to colors.
+
+- Each step is a **value** and a **color**. Colors blend smoothly between steps.
+- Values below the lowest step use the lowest color; values above the highest step use the
+  highest color.
+- **+ Add Step** adds a breakpoint (up to 9). Click **×** to remove one (minimum 2).
+
+**Auto-space the steps** spreads the current steps evenly between a low and high value:
+
+| Button | Range used |
+|---|---|
+| **All data** | Lowest to highest value on the Marks card |
+| **All regions' values** | Lowest to highest *computed* value across every region (best when regions aggregate several values) |
+| **This region's values** | Lowest to highest of the values matched by this region |
+
+The default scale is blue (0) → white (50) → red (100), so auto-space it or set step values to fit
+your measure. Every region has its own scale.
+
+---
+
+## 7. Display options
+
+**Opacity** — the slider in the side panel's **Display** section sets how much of the image shows
+through all regions. To give one region its own opacity, open its ⚙ panel → **Display**, tick the
+**Opacity** checkbox, and set the slider.
+
+**Labels on image** — turn labels on in **Settings → Labels on image**, choosing **Region name**,
+**Value**, or **Name and value**. Set the font size, color, and whether text gets an outline for
+readability. Labels are centered in each shape. To hide one region's label, untick
+**Show label on image** in its ⚙ panel.
+
+**Borders and "no data" style** — set these in **Settings → Regions**: border color and width
+(0 for no border), and whether regions without data use a hatched pattern or a solid color.
+
+---
+
+## 8. Customize the tooltip
+
+Hover over a region to see its tooltip. To change the wording, open the region's ⚙ panel and edit
+**Tooltip text**. Click a placeholder button to insert it at the cursor. Placeholders are replaced
+with live values:
+
+| Placeholder | Replaced with |
+|---|---|
+| `{name}` | Region name |
+| `{agg}` | Aggregation (SUM, AVG, …) |
+| `{value}` | The region's computed value (with your prefix/suffix) |
+| `{matched}` | How many of the region's values were found in the data |
+| `{total}` | How many values are assigned to the region |
+| `{values}` | Comma-separated list of the matched values |
+| `{missing}` | Assigned values that aren't in the current data (or "none") |
+| `{min}` / `{max}` | Lowest / highest matched value |
+| `{sum}` / `{avg}` | Sum / average of the matched values |
+| `{count}` | Number of matched values |
+| `{rowcount}` | Total of the Row Count field across matched values |
+| `{field}` | Name of the Region ID field |
+| `{measure}` | Name of the Value field |
+
+The **first line** is the tooltip title; any further lines appear below it. **Reset to default**
+restores:
+
+```
+{name}
+{agg}: {value} ({matched}/{total} matched)
+```
+
+---
+
+## 9. Click actions: filter sheets and change a parameter
+
+Clicking a region (on the image or in the side panel) runs its click actions. No dashboard action
+needs to be set up.
+
+### Filter other worksheets
+
+Choose which worksheets are filtered in one or both places:
+
+- **Default for all regions:** **Settings → Click actions → Default filter target worksheets**.
+- **Per region:** the region's ⚙ panel → **Click actions → Target sheets**. This overrides the
+  default for that region. Leave it empty to use the default.
+
+To pick sheets:
+
+1. Click **Find sheets**. The extension lists every worksheet in the workbook that the Region ID
+   field can filter.
+2. Choose a sheet from **Add a worksheet…**. Repeat for more sheets.
+3. Remove a sheet with the **×** on its chip.
+
+You can also type a worksheet name and click **+ Add**. A name with a dashed red outline wasn't
+found among the sheets that can be filtered — check the spelling.
+
+The target worksheets must include the **Region ID field** (use the same data source, or a data
+source related to it). The extension's own worksheet is never filtered, so every region keeps its
+color while a filter is active.
+
+### Change a parameter
+
+1. In **Settings → Click actions**, choose a **Parameter** (click the refresh icon if you've just
+   created one).
+2. Choose the **Value sent**: the **Region name**, or the region's **first matched data value**.
+3. Optionally, give a region its own value in its ⚙ panel → **Click actions → Parameter**.
+
+For a parameter with a list of allowed values, the value sent must match one of them (upper/lower
+case doesn't matter). When the selection is cleared, the parameter goes back to the value it had
+before you clicked.
+
+A region can filter, change the parameter, or both. If it has neither target sheets nor a
+parameter, clicking it shows a message explaining what to set.
+
+### Select several regions
+
+**Ctrl+click** (Windows) or **Cmd+click** (Mac) a region to add it to the selection, or to remove
+it if it's already selected. The filter then includes the values of every selected region, and is
+sent to all of their target sheets combined. The parameter is set from the region you clicked last.
+
+### Clicking again
+
+Selected regions have a dashed outline on the image and a highlighted card in the side panel.
+A plain click on a **different** region replaces the selection. A plain click on the **only**
+selected region does whatever you've chosen under **On 2nd click** in its ⚙ panel:
+
+| Option | What happens |
+|---|---|
+| **Clear the filter** *(default)* | The filter is removed and the parameter is restored |
+| **Keep the current filter** | Nothing changes |
+| **Select all values in the field** | The filter stays on with every value selected, and the parameter is restored |
+
+**Clear Selection** in the side panel's **Filtering** section always removes the filter and
+restores the parameter.
+
+A short message near the top of the canvas confirms what each click did.
+
+---
+
+## 10. Prepare it for a dashboard
+
+### Hide the editing controls
+
+Click the **lock** button in the top-right corner of the canvas to hide the toolbar, side panel,
+and zoom control, leaving only the image, colored regions, and labels. Click it again to bring
+them back. This setting is saved with the workbook.
+
+When the workbook is viewed in **Presentation Mode** or as a **published view**, the editing
+controls are hidden automatically. Viewers can still hover for tooltips and click (or
+Ctrl/Cmd+click) regions.
+
+### Collapse just the side panel
+
+Click the thin **‹ / ›** tab between the image and the side panel to hide or show the panel while
+keeping the toolbar visible.
 
 ### On-canvas legend
 
-A floating gradient bar appears in the bottom-right of the canvas showing the color scale for
-whichever region you're currently hovering; if you're not hovering anything, it falls back to
-showing the scale for the currently active (filtered) region. It reflects the region's configured
-**palette breakpoints** (the min/max values you set in ⚙, not the live data range), since that's
-the actual domain the color mapping represents. Turn it off via **Show on-canvas legend** in
-⚙ Settings. Unlike the zoom control, the legend stays visible even when the editing chrome is
-locked — it's meant for dashboard viewers, not just you.
-
-### Per-region value formatting
-
-Each region's ⚙ panel has **Format: Prefix / Suffix** fields — e.g. prefix `$` for currency, or
-suffix ` kWh` for a utility reading. These apply everywhere the value is displayed: the sidebar,
-the tooltip, and the legend's min/max labels. Purely cosmetic — they don't affect matching,
-aggregation, or coloring.
-
-### Show/hide individual regions
-
-Each region's sidebar row has an eye icon (leftmost of the action icons). Toggling it off doesn't
-just fade the region — it's skipped from rendering entirely, so it also stops intercepting clicks.
-This is the main reason to use it: when drawing several shapes close together or overlapping, hide
-the ones you're not currently working with so clicks land on the shape you actually want. Hidden
-regions still work normally everywhere else (data matching, filtering, ⚙ config) — only their
-on-image presence is suppressed. A **Show All** link appears next to the "Regions" header whenever
-at least one region is hidden.
-
-### Duplicate a region's configuration
-
-The copy icon on a region's sidebar row clones its aggregation, palette, tooltip template, target
-sheets, toggle behavior, and value format into a brand-new region named "*(original) Copy*".
-Deliberately **not** copied: matched values and shapes — those are usually exactly what needs to
-differ between otherwise-identical regions (e.g. several rooms sharing one setup but each keyed to
-different data values). After duplicating, add matched values via ⚙ and draw a shape for it.
-
-### Copy/paste a full configuration
-
-In ⚙ Settings → **Backup / transfer configuration**: **Copy Config** serializes the current image,
-all regions and shapes, and display settings into a block of text (with a "Copy to Clipboard"
-button, falling back to manual select if clipboard access isn't available in your context).
-**Paste Config** accepts that same text back and applies it — after a confirmation prompt, since it
-replaces the current image and every region. Use this to move a configured setup to another
-worksheet, or to hand a finished setup to someone else, without redrawing everything by hand.
-
-## 6. Styling
-
-The UI has been restyled against Tableau's own published Extensions guidance:
-- Color: [ux_color](https://tableau.github.io/extensions-api/docs/Style_Guidelines/ux_color) — uses
-  Tableau's documented gray scale (F1–F9), functional colors (Action Orange for primary actions,
-  Attention Red for destructive actions, Go Green for confirmations), and font-opacity system for
-  text hierarchy, with a matching dark theme.
-- Fonts: [ux_fonts](https://tableau.github.io/extensions-api/docs/Style_Guidelines/ux_fonts) — sans
-  serif stack led by Benton Sans (Tableau's own default) with system fallbacks.
-- Layout/margins: [ux_layout](https://tableau.github.io/extensions-api/docs/Style_Guidelines/ux_layout) /
-  [ux_branding](https://tableau.github.io/extensions-api/docs/Style_Guidelines/ux_branding) —
-  12px vertical / 15px horizontal content margins.
-- Icon-only buttons use simple line icons instead of emoji, with `aria-label`s and visible focus
-  outlines for keyboard/screen-reader use.
-
-This is a good-faith adaptation of Tableau's published design guidelines, not a formal Tableau
-Exchange certification review (that requires submitting through Tableau's actual partner process).
+A color bar in the **bottom-right** of the canvas shows the color scale of the region you're
+hovering over (or the most recently selected region). It stays visible for dashboard viewers. Turn
+it off with **Settings → Display → Show on-canvas legend**.
 
 ---
 
-## Notes & limitations
+## 11. Managing regions
 
-- **Settings size**: image + regions are stored in the workbook's extension settings, which have a
-  practical size limit. For large images, use **Load URL** instead of uploading. You'll see a
-  status message if a save fails.
-- **Matching**: values are matched to the Region ID field's *formatted* value, trimmed and
-  case-insensitive.
-- **Selection API** (`selectTuplesAsync`) requires **Tableau 2024.2+** and API library v1.12.0+
-  (already bundled in `web/lib/`). Tuple IDs are computed per Tableau's documented rule
-  (`tupleId = totalRowCount - rowIndex`), recalculated whenever summary data changes.
-- **Reshaping**: regions support redraw-from-scratch (pencil icon) rather than dragging individual
-  vertices.
-- **Publishing**: to use this on Tableau Server/Cloud, host `web/` on an HTTPS server, update the
-  `<url>` in the `.trex` file, and add that URL to the site's Extensions allow-list.
+Each region card in the side panel shows a drag handle, a color swatch, its name, its current
+value, and these icons:
+
+| Icon | Action |
+|---|---|
+| Eye | **Hide / show** the region on the image. Hidden regions can't be clicked, which is handy when shapes overlap. **Show All** (next to the Regions heading) brings them all back. |
+| ⚙ | **Configure** data values, aggregation, format, colors, display, click actions, and tooltip |
+| Copy | **Duplicate** the region's settings (aggregation, colors, tooltip, target sheets, 2nd-click behavior, format, label and opacity) as a new region below it. The copy has **no shapes, data values, or parameter value** — add those next. |
+| Trash | **Delete** the region and all its shapes (after a confirmation) |
+
+- **Search:** type in **Search regions or values…** to show only regions whose name or assigned
+  values match.
+- **Reorder:** drag a card by its handle (the dotted grip on the left). Regions **lower** in the
+  list are drawn **on top** of regions above them, so use this to control which shape is on top
+  where shapes overlap. Reordering is turned off while a search is active.
+- Hovering a card highlights its shapes on the image.
+
+---
+
+## 12. Settings
+
+Open **Settings** from the top toolbar.
+
+| Section | Settings |
+|---|---|
+| **Appearance** | Light or Dark theme; canvas color and optional background image URL for the area *behind* your image (**Reset** returns to the default) |
+| **Regions** | Border color and width; "no data" style (hatched pattern or solid color) |
+| **Labels on image** | What to show (off, name, value, or both), font size, color, and outline |
+| **Click actions** | Default filter target worksheets; the parameter to change on click, and which value is sent |
+| **Display** | Show or hide status notifications (this also hides error messages) and the on-canvas legend |
+| **Backup / transfer** | Copy or paste your full setup (see below) |
+
+### Copy a setup to another worksheet or workbook
+
+1. In the configured extension: **Settings → Copy Config → Copy to Clipboard**.
+2. In the other Image Heatmap extension: **Settings → Paste Config**, paste the text, and click
+   **Apply**.
+
+This copies the image, all regions and shapes, opacity, canvas background, border, label,
+no-data and click-action settings. **Applying replaces the current image and all regions.** It's
+also a handy way to keep a backup of your setup.
+
+---
+
+## Keyboard and mouse reference
+
+| Where | Action | Result |
+|---|---|---|
+| Drawing a polygon | Click / **Enter** / click first point | Add point / finish / finish |
+| Drawing a polygon | **Backspace**, **Ctrl/Cmd+Z**, right-click | Remove last point |
+| Drawing or editing | **Esc** | Cancel drawing / finish editing |
+| Editing points | Drag point / drag shape | Move point / move shape |
+| Editing points | Double-click shape / Alt+click point | Add point / remove point |
+| Image or side panel | Click / **Ctrl/Cmd+click** a region | Select it / add or remove it from the selection |
+
+---
+
+## Troubleshooting
+
+| What you see | What to check |
+|---|---|
+| Region shows the "no data" style | No data values are assigned (open ⚙ and add them), or none of them are in the current data. Look for dashed red chips in ⚙. |
+| Region shows e.g. `2/3 matched` | One of its values isn't in the current data. It's shown with a dashed red outline in ⚙. |
+| Clicking a region doesn't filter anything | Make sure target worksheets are set (in Settings or the region's ⚙ panel), use **Find sheets** to check the names, and confirm those sheets use the Region ID field. |
+| **Find sheets** finds nothing | The other worksheets don't use the Region ID field's data source yet. You can still type sheet names. |
+| The parameter doesn't change | For a list parameter, the value sent must be one of its allowed values. Set a custom value in the region's ⚙ panel if needed. |
+| **+ Draw Region** is grayed out | Load an image first. |
+| "Could not save" message | The uploaded image is likely too large to store in the workbook. Use **Load URL** or a smaller image. |
+| Colors all look the same | The color steps don't fit your data's range. Open ⚙ and use one of the **Auto-space** buttons, or set step values manually. |
